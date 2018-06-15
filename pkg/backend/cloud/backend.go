@@ -141,6 +141,8 @@ type Backend interface {
 
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
+
+	CurrentUser() (string, error)
 }
 
 type cloudBackend struct {
@@ -307,6 +309,10 @@ func (b *cloudBackend) Name() string {
 	}
 
 	return b.url
+}
+
+func (b *cloudBackend) CurrentUser() (string, error) {
+	return b.client.GetPulumiAccountName(context.Background())
 }
 
 func (b *cloudBackend) CloudURL() string { return b.url }
