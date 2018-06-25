@@ -94,6 +94,14 @@ func (proj *Project) Save(path string) error {
 	return ioutil.WriteFile(path, b, 0644)
 }
 
+func (proj *Project) RuntimeOptions() map[string]struct{} {
+	runtimeOptions := make(map[string]struct{})
+	if os.Getenv("PULUMI_NODEJS_TYPESCRIPT") != "" {
+		runtimeOptions["typescript"] = struct{}{}
+	}
+	return runtimeOptions
+}
+
 // ProjectStack holds stack specific information about a project.
 // nolint: lll
 type ProjectStack struct {

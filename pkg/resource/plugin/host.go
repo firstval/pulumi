@@ -71,11 +71,12 @@ type Events interface {
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, config ConfigSource, events Events) (Host, error) {
+func NewDefaultHost(ctx *Context, config ConfigSource, events Events, runtimeOptions map[string]struct{}) (Host, error) {
 	host := &defaultHost{
 		ctx:             ctx,
 		config:          config,
 		events:          events,
+		runtimeOptions:  runtimeOptions,
 		analyzerPlugins: make(map[tokens.QName]*analyzerPlugin),
 		languagePlugins: make(map[string]*languagePlugin),
 		resourcePlugins: make(map[tokens.Package]*resourcePlugin),
@@ -109,6 +110,7 @@ type defaultHost struct {
 	ctx             *Context                           // the shared context for this host.
 	config          ConfigSource                       // the source for provider configuration parameters.
 	events          Events                             // optional callbacks for plugin load events
+	runtimeOptions  map[string]struct{}                // options to pass to the language plugins.
 	analyzerPlugins map[tokens.QName]*analyzerPlugin   // a cache of analyzer plugins and their processes.
 	languagePlugins map[string]*languagePlugin         // a cache of language plugins and their processes.
 	resourcePlugins map[tokens.Package]*resourcePlugin // a cache of resource plugins and their processes.
@@ -275,7 +277,7 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 		}
 
 		// If not, allocate a new one.
-		plug, err := NewLanguageRuntime(host, host.ctx, runtime)
+		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.runtimeOptions)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {

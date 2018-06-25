@@ -379,7 +379,7 @@ func (host *testProviderHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error)
 func (host *testProviderHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	return host.provider(pkg, version)
 }
-func (host *testProviderHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+func (host *testProviderHost) LanguageRuntime(runtime string, options map[string]struct{}) (plugin.LanguageRuntime, error) {
 	return host.langhost(runtime)
 }
 func (host *testProviderHost) ListPlugins() []workspace.PluginInfo {
