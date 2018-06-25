@@ -64,13 +64,20 @@ const (
 // endpoint.
 func main() {
 	var tracing string
+	var typescript bool
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
-
+	flag.BoolVar(&typescript, "typescript", false,
+		"Use ts-node at runtime")
 	flag.Parse()
+
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-langauge-nodejs", tracing)
+
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_NODEJS_TYPESCRIPT")) {
+		typescript = true
+	}
 
 	nodePath, err := exec.LookPath("node")
 	if err != nil {
@@ -96,7 +103,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodePath, runPath, engineAddress, tracing)
+			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -121,14 +128,16 @@ type nodeLanguageHost struct {
 	runPath       string
 	engineAddress string
 	tracing       string
+	typescript    bool
 }
 
-func newLanguageHost(nodePath, runPath, engineAddress, tracing string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(nodePath, runPath, engineAddress, tracing string, typescript bool) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		nodeBin:       nodePath,
 		runPath:       runPath,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		typescript:    typescript,
 	}
 }
 
@@ -337,6 +346,9 @@ func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest) []st
 	maybeAppendArg("pwd", req.GetPwd())
 	if req.GetDryRun() {
 		args = append(args, "--dry-run")
+	}
+	if host.typescript {
+		args = append(args, "--typescript")
 	}
 
 	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))

@@ -17,6 +17,7 @@
 import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
+import * as tsnode from "ts-node";
 import * as util from "util";
 import * as pulumi from "../../";
 import { RunError } from "../../errors";
@@ -32,6 +33,7 @@ function usage(): void {
     console.error(`        --config.k=v...     set runtime config key k to value v`);
     console.error(`        --parallel=p        run up to p resource operations in parallel (default is serial)`);
     console.error(`        --dry-run           true to simulate resource changes, but without making them`);
+    console.error(`        --typescript        true to use node-ts to allow typescript as input`);
     console.error(`        --pwd=pwd           change the working directory before running the program`);
     console.error(`        --monitor=addr      [required] the RPC address for a resource monitor to connect to`);
     console.error(`        --engine=addr       the RPC address for a resource engine to connect to`);
@@ -146,7 +148,7 @@ export function main(args: string[]): void {
     // See usage above for the intended usage of this program, including flags and required args.
     const config: {[key: string]: string} = {};
     const argv: minimist.ParsedArgs = minimist(args, {
-        boolean: [ "dry-run" ],
+        boolean: [ "dry-run", "typescript" ],
         string: [ "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
         unknown: (arg: string) => {
             if (arg.indexOf("-") === 0) {
@@ -180,8 +182,11 @@ export function main(args: string[]): void {
         }
     }
 
-    // If ther is a --dry-run directive, flip the switch.  This controls whether we are planning vs. really doing it.
+    // If there is a --dry-run directive, flip the switch.  This controls whether we are planning vs. really doing it.
     const dryRun: boolean = !!(argv["dry-run"]);
+
+    // If this is a typescript project, we'll want to load node-ts
+    const typeScript: boolean = !!(argv["typescript"]);
 
     // If there is a monitor argument, connect to it.
     const monitorAddr = argv["monitor"];
@@ -201,6 +206,14 @@ export function main(args: string[]): void {
         monitorAddr: monitorAddr,
         engineAddr: engineAddr,
     });
+
+    if (typeScript) {
+        console.log("registering ts-node");
+
+        tsnode.register({
+            typeCheck: true,
+        });
+    }
 
     // Pluck out the program and arguments.
     if (argv._.length === 0) {
