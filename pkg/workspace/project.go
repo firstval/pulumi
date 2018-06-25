@@ -40,9 +40,9 @@ type Analyzers []tokens.QName
 // TODO[pulumi/pulumi#423]: use DOM based marshalling so we can roundtrip the seralized structure perfectly.
 // nolint: lll
 type Project struct {
-	Name    tokens.PackageName `json:"name" yaml:"name"`                     // a required fully qualified name.
-	Runtime string             `json:"runtime" yaml:"runtime"`               // a required runtime that executes code.
-	Main    string             `json:"main,omitempty" yaml:"main,omitempty"` // an optional override for the main program location.
+	Name        tokens.PackageName `json:"name" yaml:"name"`                     // a required fully qualified name.
+	RuntimeInfo ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`               // a required runtime that executes code.
+	Main        string             `json:"main,omitempty" yaml:"main,omitempty"` // an optional override for the main program location.
 
 	Description *string `json:"description,omitempty" yaml:"description,omitempty"` // an optional informational description.
 	Author      *string `json:"author,omitempty" yaml:"author,omitempty"`           // an optional author.
@@ -61,9 +61,10 @@ func (proj *Project) Validate() error {
 	if proj.Name == "" {
 		return errors.New("project is missing a 'name' attribute")
 	}
-	if proj.Runtime == "" {
+	if proj.RuntimeInfo.Name() == "" {
 		return errors.New("project is missing a 'runtime' attribute")
 	}
+
 	return nil
 }
 
@@ -94,14 +95,6 @@ func (proj *Project) Save(path string) error {
 	return ioutil.WriteFile(path, b, 0644)
 }
 
-func (proj *Project) RuntimeOptions() map[string]struct{} {
-	runtimeOptions := make(map[string]struct{})
-	if os.Getenv("PULUMI_NODEJS_TYPESCRIPT") != "" {
-		runtimeOptions["typescript"] = struct{}{}
-	}
-	return runtimeOptions
-}
-
 // ProjectStack holds stack specific information about a project.
 // nolint: lll
 type ProjectStack struct {
@@ -130,6 +123,56 @@ func (ps *ProjectStack) Save(path string) error {
 	}
 
 	return ioutil.WriteFile(path, b, 0644)
+}
+
+type ProjectRuntimeInfo struct {
+	name    string
+	options map[string]bool
+}
+
+func NewProjectRuntimeInfo(name string, options map[string]bool) ProjectRuntimeInfo {
+	return ProjectRuntimeInfo{
+		name:    name,
+		options: options,
+	}
+}
+
+func (info *ProjectRuntimeInfo) Name() string {
+	return info.name
+}
+
+func (info *ProjectRuntimeInfo) Options() map[string]bool {
+	return info.options
+}
+
+func (info ProjectRuntimeInfo) MarshallYAML() (interface{}, error) {
+	if info.options == nil || len(info.options) == 0 {
+		return info.name, nil
+	}
+
+	return map[string]interface{}{
+		"name":    info.name,
+		"options": info.options,
+	}, nil
+}
+
+func (info *ProjectRuntimeInfo) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	if err := unmarshal(&info.name); err == nil {
+		return nil
+	}
+
+	var payload struct {
+		Name    string          `yaml:"name"`
+		Options map[string]bool `yaml:"options"`
+	}
+
+	if err := unmarshal(&payload); err == nil {
+		info.name = payload.Name
+		info.options = payload.Options
+		return nil
+	}
+
+	return errors.New("runtime section must be a string or an object with name and options attributes")
 }
 
 // LoadProject reads a project definition from a file.

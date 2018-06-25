@@ -41,7 +41,7 @@ func ProjectInfoContext(projinfo *Projinfo, config plugin.ConfigSource, pluginEv
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContext(diag, nil, config, pluginEvents, pwd, projinfo.Proj.RuntimeOptions(), tracingSpan)
+	ctx, err := plugin.NewContext(diag, nil, config, pluginEvents, pwd, projinfo.Proj.RuntimeInfo.Options(), tracingSpan)
 	if err != nil {
 		return "", "", nil, err
 	}
